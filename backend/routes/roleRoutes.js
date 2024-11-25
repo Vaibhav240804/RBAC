@@ -16,7 +16,8 @@ router.post(
   verifyToken,
   validate([
     check("name").notEmpty().trim().escape(),
-    check("permissions").isArray(),
+    check("permissionIds").isArray(),
+    check("permissionIds.*").isMongoId().withMessage("Invalid permission ID"),
     check("user").notEmpty(),
     check("user._id").isMongoId().withMessage("Invalid user ID"),
   ]),
@@ -51,7 +52,7 @@ router.get(
         check("user._id").isMongoId().withMessage("Invalid user ID"),
         param("roleId").notEmpty().isMongoId().withMessage("Invalid role ID"),
     ]),
-    getRolesByUserId
+    getRoleById
 )
 
 router.delete(

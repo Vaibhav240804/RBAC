@@ -29,6 +29,7 @@ exports.createPermission = async (req, res) => {
     });
 
     await permission.save();
+
     res
       .status(201)
       .json({ message: "Permission created successfully", permission });
@@ -41,10 +42,12 @@ exports.createPermission = async (req, res) => {
 
 exports.getAllPermissions = async (req, res) => {
   try {
-    const permissions = await Permission.find()
-      .populate("createdBy", "username")
-      .populate("basePermissions", "name");
-    res.status(200).json(permissions);
+    const { user } = req.body;
+    const permissions = await Permission.find({
+      $or: [{ createdBy: user._id }, { createdBy: null, isCustom: false }],
+    });
+    res.status(200).json({ permissions });
+    
   } catch (err) {
     res
       .status(500)

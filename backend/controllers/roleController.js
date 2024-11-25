@@ -5,7 +5,7 @@ const IAMUser = require("../models/IAMUser");
 
 exports.createRole = async (req, res) => {
   try {
-    const { name, permissions, user } = req.body;
+    const { name, permissionIds, user } = req.body;
 
     if (!name || !permissions || !user) {
       return res
@@ -23,16 +23,15 @@ exports.createRole = async (req, res) => {
     const existingRole = await Role.findOne({ name });
 
     if (existingRole) {
-      return res
-        .status(400)
-        .json({ message: "Role with this name already exists" });
+      return res.status(400).json({ message: "Role already exists" });
     }
 
-    const existingPermissions = await Permission.find({
-      _id: { $in: permissions },
+    const permissions = await Permission.find({
+      _id: { $in: permissionIds },
     });
-    if (existingPermissions.length !== permissions.length) {
-      return res.status(404).json({ message: "Some permissions are invalid" });
+
+    if (permissions.length !== permissionIds.length) {
+      return res.status(400).json({ message: "Some permissions are invalid" });
     }
 
     const role = new Role({
@@ -42,7 +41,13 @@ exports.createRole = async (req, res) => {
     });
 
     await role.save();
-    res.status(201).json({ message: "Role created successfully", role });
+
+    const roles = await Role.find({ createdBy: creator }).populate(
+      "permissions",
+      "name description"
+    );
+
+    res.status(201).json({ message: "Role created successfully", roles });
   } catch (err) {
     res
       .status(500)

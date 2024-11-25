@@ -4,7 +4,7 @@ const {
   getIAMUsers,
   deleteIAMUser,
 } = require("../controllers/iamUserController");
-const { authenticate } = require("../middlewares/authMiddleware");
+const { verifyToken } = require("../middlewares/authMiddleware");
 const { validate } = require("../middlewares/validateMiddleware");
 const { check } = require("express-validator");
 
@@ -12,11 +12,14 @@ const router = express.Router();
 
 router.post(
   "/",
-  authenticate,
+  verifyToken,
   validate([
-    check("iamUsername").notEmpty(),
+    check("iamUsername").notEmpty().trim().escape(),
     check("password").isLength({ min: 6 }),
     check("roles").isArray(),
+    check("roles.*").isMongoId().withMessage("Invalid role ID"),
+    check("user").notEmpty(),
+    check("user._id").isMongoId().withMessage("Invalid user ID"),
   ]),
   createIAMUser
 );

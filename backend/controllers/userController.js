@@ -1,24 +1,58 @@
 const User = require("../models/User");
 const Role = require("../models/Role");
-const Permission = require("../models/Permission");
 const IAMUser = require("../models/IAMUser");
 
-exports.assignRolesToUser = async (req, res) => {
-  const { userId, roleIds } = req.body;
+exports.toggleStatus = async (req, res) => {
+  const { iamUserId } = req.body;
 
   try {
+    const { user } = req.body;
+    const userId = user._id;
+
+    const iamUser = await IAMUser.findOne({
+      _id: iamUserId,
+      createdBy: userId,
+    });
+
+    if (!iamUser) {
+      return res.status(404).json({ message: "IAM user not found" });
+    }
+
+    iamUser.isActive = !iamUser.isActive;
+    await iamUser.save();
+
+    res.status(200).json({ message: "IAM user status toggled successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+exports.assignRolesToUser = async (req, res) => {
+  const { userId, roleIds, user } = req.body;
+
+  try {
+    const isCreator = await User.findOne({
+      _id: user._id,
+      iamUsers: { $in: [userId] },
+      roles: { $in: roleIds },
+    });
+
+    if (!isCreator) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
     const roles = await Role.find({ _id: { $in: roleIds } });
     if (roles.length !== roleIds.length) {
       return res.status(400).json({ message: "Invalid role IDs provided" });
     }
 
-    const user = await User.findByIdAndUpdate(
+    const dbuser = await User.findByIdAndUpdate(
       userId,
       { $addToSet: { roles: { $each: roleIds } } },
       { new: true }
     ).populate("roles");
 
-    if (!user) {
+    if (!dbuser) {
       return res.status(404).json({ message: "User not found" });
     }
 
@@ -27,39 +61,7 @@ exports.assignRolesToUser = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
-
-exports.assignPermissionsToUser = async (req, res) => {
-  const { userId, permissionIds } = req.body;
-
-  try {
-    const permissions = await Permission.find({ _id: { $in: permissionIds } });
-    if (permissions.length !== permissionIds.length) {
-      return res
-        .status(400)
-        .json({ message: "Invalid permission IDs provided" });
-    }
-
-    const user = await User.findById(userId).populate("roles");
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const tempRole = {
-      name: `TempRole-${user.username}-${Date.now()}`,
-      permissions: permissionIds,
-    };
-
-    const role = new Role(tempRole);
-    await role.save();
-
-    user.roles.push(role._id);
-    await user.save();
-
-    res.status(200).json({ message: "Permissions assigned to user", user });
-  } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
-};
+ 
 
 exports.getAllUsers = async (req, res) => {
   try {

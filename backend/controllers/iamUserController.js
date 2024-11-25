@@ -4,8 +4,8 @@ const { generateIAMCredentials } = require("../utils/generateIAM");
 
 exports.createIAMUser = async (req, res) => {
   try {
-    const rootUserId = req.user.id; 
-    const { iamUsername, roles } = req.body;
+    const {user, iamUsername, roles} = req.body;
+    const rootUserId = user._id;
 
     const existingIAMUser = await IAMUser.findOne({
       iamUsername,

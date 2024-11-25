@@ -1,14 +1,27 @@
 const express = require("express");
 const {
   getAllUsers,
-  assignRoles,
+  assignRolesToUser,
   deleteIAMUser,
+  toggleStatus,
 } = require("../controllers/userController");
 const { verifyToken } = require("../middlewares/authMiddleware");
 const { validate } = require("../middlewares/validationMiddleware");
 const { check } = require("express-validator");
 
 const router = express.Router();
+
+
+router.post(
+  "/toggle-status",
+  verifyToken,
+  validate([
+    check("user").notEmpty(),
+    check("iamUserId").isMongoId().withMessage("Invalid IAM user ID"),
+    check("user._id").isMongoId().withMessage("Invalid user ID"),
+  ]),
+  toggleStatus
+)
 
 router.get(
   "/",
@@ -31,11 +44,18 @@ router.delete(
   deleteIAMUser
 );
 
+
 router.post(
   "/assign-roles",
   verifyToken,
-  validate([check("userId").isMongoId(), check("roles").isArray()]),
-  assignRoles
-);
+  validate([
+    check("user").notEmpty(),
+    check("userId").isMongoId().withMessage("Invalid user ID"),
+    check("user._id").isMongoId().withMessage("Invalid user ID"),
+    check("rolesids").isArray().withMessage("Roles must be an array"),
+    check("rolesIds.*").isMongoId().withMessage("Invalid role ID"),
+  ]),
+  assignRolesToUser
+)
 
 module.exports = router;
