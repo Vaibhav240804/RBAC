@@ -3,10 +3,13 @@ const {
   createIAMUser,
   getIAMUsers,
   deleteIAMUser,
+  getAuser,
+  toggleStatus,
+  assignRolesToUser,
 } = require("../controllers/iamUserController");
 const { verifyToken } = require("../middlewares/authMiddleware");
-const { validate } = require("../middlewares/validateMiddleware");
-const { check } = require("express-validator");
+const { validate } = require("../middlewares/validationMiddleware");
+const { check, param } = require("express-validator");
 
 const router = express.Router();
 
@@ -15,8 +18,7 @@ router.post(
   verifyToken,
   validate([
     check("iamUsername").notEmpty().trim().escape(),
-    check("password").isLength({ min: 6 }),
-    check("roles").isArray(),
+    check("roles").optional().isArray(),
     check("roles.*").isMongoId().withMessage("Invalid role ID"),
     check("user").notEmpty(),
     check("user._id").isMongoId().withMessage("Invalid user ID"),
@@ -24,8 +26,56 @@ router.post(
   createIAMUser
 );
 
-router.get("/", authenticate, getIAMUsers);
+router.get(
+  "/",
+  verifyToken,
+  validate([check("user").notEmpty().withMessage("Root User is required")]),
+  getIAMUsers
+);
 
-router.delete("/:iamUserId", authenticate, deleteIAMUser);
+router.post(
+  "/toggle-status/:iamUserId",
+  verifyToken,
+  validate([
+    param("iamUserId")
+      .notEmpty()
+      .trim()
+      .isMongoId()
+      .withMessage("Invalid IAM user ID"),
+    check("user").notEmpty(),
+    check("user._id").isMongoId().withMessage("Invalid user ID"),
+  ]),
+  toggleStatus
+)
+
+router.get(
+  "/:iamUsername",
+  verifyToken,
+  validate([
+    check("iamUsername")
+      .notEmpty()
+      .trim()
+      .escape()
+      .withMessage("Invalid IAM user ID"),
+    check("user").notEmpty(),
+    check("user._id").isMongoId().withMessage("Invalid user ID"),
+  ]),
+  getAuser
+);
+
+router.delete(
+  "/:iamUserId",
+  verifyToken,
+  validate([
+    check("iamUserId")
+      .notEmpty()
+      .trim()
+      .isMongoId()
+      .withMessage("Invalid IAM user ID"),
+    check("user").notEmpty(),
+    check("user._id").isMongoId().withMessage("Invalid user ID"),
+  ]),
+  deleteIAMUser
+);
 
 module.exports = router;

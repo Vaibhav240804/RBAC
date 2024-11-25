@@ -16,7 +16,7 @@ router.post(
   verifyToken,
   validate([
     check("name").notEmpty().trim().escape(),
-    check("permissionIds").isArray(),
+    check("permissionIds").isArray().withMessage("Permissions must be an array"),
     check("permissionIds.*").isMongoId().withMessage("Invalid permission ID"),
     check("user").notEmpty(),
     check("user._id").isMongoId().withMessage("Invalid user ID"),
@@ -29,14 +29,14 @@ router.post(
   verifyToken,
   validate([
     check("userId").isMongoId().withMessage("Invalid user ID"),
-    check("roles").isArray(),
+    check("roleIds.*").isMongoId().withMessage("Invalid role ID"),
     check("user").notEmpty(),
   ]),
     assignRolesToUser
 );
 
 router.get(
-    "/roles",
+    "/",
     verifyToken,
     validate([
         check("user").notEmpty(),

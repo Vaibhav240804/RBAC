@@ -28,7 +28,14 @@ class UserController {
         from: `YourApp <${process.env.MAIL}>`,
         to: email,
         subject: "OTP for Verification",
-        text: `Your OTP for verification is: ${otp}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; text-align: center;">
+        <h2 style="color: #4CAF50;">Your OTP for Verification</h2>
+        <p style="font-size: 16px;">Your OTP for verification is:</p>
+        <p style="font-size: 24px; font-weight: bold; color: #333;">${otp}</p>
+        <p style="font-size: 14px; color: #777;">Please use this OTP to complete your verification process.</p>
+          </div>
+        `,
       };
       await transporter.sendMail(mailOptions);
     } catch (error) {
@@ -59,7 +66,7 @@ class UserController {
         },
         process.env.JWT_SECRET,
         {
-          expiresIn: "1h",
+          expiresIn: "12h",
         }
       );
 
@@ -69,11 +76,31 @@ class UserController {
       res.status(500).json({ message: "Internal Server Error" });
     }
   };
+
   signup = async (req, res) => {
     try {
-      const { username, password } = req.body;
-      const passwordHash = await bcrypt.hash(password, 10);
-      const newUser = new User({ username, password: passwordHash });
+      const { username, password, email } = req.body;
+      const alreadyExists = await User.findOne({ email });
+      if (alreadyExists) {
+        return res.status(400).json({ message: "User already exists" });
+      }
+
+      let accountId = crypto.randomBytes(8).toString("hex");
+      while (
+        await User.findOne({
+          accountId,
+        })
+      ) {
+        accountId = crypto.randomBytes(8).toString("hex");
+      }
+
+      const newUser = new User({
+        username,
+        email,
+        accountId,
+        password,
+      });
+
       await newUser.save();
       res.status(200).json({ message: "User registered successfully" });
     } catch (error) {
@@ -85,14 +112,18 @@ class UserController {
   signin = async (req, res) => {
     const { email, password, isRoot } = req.body;
 
-    if (!username || !password) {
+    if (!email || !password) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
     try {
       if (isRoot) {
         const user = await User.findOne({ email });
-        if (!user || !(await user.comparePassword(password))) {
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        const isValid = await user.comparePassword(password);
+        if (!isValid) {
           return res.status(401).json({ message: "Invalid credentials" });
         }
 
@@ -103,7 +134,6 @@ class UserController {
 
         res.json({
           message: "Login successful, OTP sent to email",
-          userType: user.isRoot ? "Root User" : "IAM User",
         });
       } else {
         const { iamUsername, accountId, password } = req.body;
@@ -122,7 +152,7 @@ class UserController {
           },
           process.env.JWT_SECRET,
           {
-            expiresIn: "1h",
+            expiresIn: "12h",
           }
         );
 

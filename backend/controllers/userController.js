@@ -2,6 +2,33 @@ const User = require("../models/User");
 const Role = require("../models/Role");
 const IAMUser = require("../models/IAMUser");
 
+// create a new IAM user
+
+exports.createIAMUser = async (req, res) => {
+  const { iamUsername, accountId, roles } = req.body;
+
+  try {
+    const { user } = req.body;
+
+    const iamUser = new IAMUser({
+      iamUsername,
+      accountId,
+      roles,
+      createdBy: user._id,
+    });
+
+    await iamUser.save();
+
+    await User.findByIdAndUpdate(user._id, {
+      $addToSet: { iamUsers: iamUser._id },
+    });
+
+    res.status(201).json({ message: "IAM user created successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+}
+
 exports.toggleStatus = async (req, res) => {
   const { iamUserId } = req.body;
 

@@ -1,11 +1,13 @@
 const IAMUser = require("../models/IAMUser");
 const User = require("../models/User");
 const { generateIAMCredentials } = require("../utils/generateIAM");
+const Role = require("../models/Role");
 
 exports.createIAMUser = async (req, res) => {
   try {
-    const {user, iamUsername, roles} = req.body;
+    const { user, iamUsername } = req.body;
     const rootUserId = user._id;
+    const roles = req.body.roles || [];
 
     const existingIAMUser = await IAMUser.findOne({
       iamUsername,
@@ -18,14 +20,12 @@ exports.createIAMUser = async (req, res) => {
         .json({ message: "IAM user already exists with this username" });
     }
 
-    const { accountId, password } = generateIAMCredentials();
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
+    const { accountId, password } = await generateIAMCredentials();
+    console.log("`iam cred", accountId, iamUsername, password);
     const newIAMUser = await IAMUser.create({
-      iamUsername,
-      accountId,
-      password: hashedPassword,
+      iamUsername: iamUsername,
+      accountId: accountId,
+      password: password,
       createdBy: rootUserId,
       roles,
     });
@@ -34,14 +34,13 @@ exports.createIAMUser = async (req, res) => {
       $push: { iamUsers: newIAMUser._id },
     });
 
-
     res.status(201).json({
       message: "IAM user created successfully",
       iamUser: {
         iamUsername: newIAMUser.iamUsername,
         accountId: newIAMUser.accountId,
+        password,
       },
-      password, 
     });
   } catch (err) {
     res
@@ -50,11 +49,35 @@ exports.createIAMUser = async (req, res) => {
   }
 };
 
+exports.toggleStatus = async (req, res) => {
+  const { iamUserId } = req.params;
+
+  try {
+    const { user } = req.body;
+    const userId = user._id;
+
+    const iamUser = await IAMUser.findOne({
+      _id: iamUserId,
+      createdBy: userId,
+    });
+
+    if (!iamUser) {
+      return res.status(404).json({ message: "IAM user not found" });
+    }
+
+    iamUser.isActive = !iamUser.isActive;
+    await iamUser.save();
+
+    res.status(200).json({ message: "IAM user status toggled successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
 
 exports.getIAMUsers = async (req, res) => {
   try {
-    const rootUserId = req.user.id; 
-
+    const { user } = req.body;
+    const rootUserId = user._id;
     const iamUsers = await IAMUser.find({ createdBy: rootUserId }).populate(
       "roles"
     );
@@ -66,12 +89,43 @@ exports.getIAMUsers = async (req, res) => {
   }
 };
 
+exports.getAuser = async (req, res) => {
+  try {
+    const { user } = req.body;
+    const { iamUsername } = req.params;
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    const rootUserId = user._id;
+
+    const iamUser = await IAMUser.findOne({
+      iamUsername,
+      createdBy: rootUserId,
+    }).populate("roles");
+
+    if (!iamUser) {
+      return res.status(404).json({ message: "IAM user not found" });
+    }
+
+    res.status(200).json(iamUser);
+  } catch (error) {
+    console.log(error);
+    res
+      .status(500)
+      .json({ message: "Error fetching IAM user", error: error.message });
+  }
+};
 
 exports.deleteIAMUser = async (req, res) => {
   const { iamUserId } = req.params;
 
   try {
-    const rootUserId = req.user.id; T
+    const { user } = req.body;
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
+    const rootUserId = user._id;
 
     const iamUser = await IAMUser.findOne({
       _id: iamUserId,
@@ -85,7 +139,6 @@ exports.deleteIAMUser = async (req, res) => {
     }
 
     await IAMUser.findByIdAndDelete(iamUserId);
-
 
     await User.findByIdAndUpdate(rootUserId, {
       $pull: { iamUsers: iamUserId },
