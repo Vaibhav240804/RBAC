@@ -4,8 +4,7 @@ const {
   getIAMUsers,
   deleteIAMUser,
   getAuser,
-  toggleStatus,
-  assignRolesToUser,
+  toggleStatus, 
 } = require("../controllers/iamUserController");
 const { verifyToken } = require("../middlewares/authMiddleware");
 const { validate } = require("../middlewares/validationMiddleware");
@@ -18,8 +17,6 @@ router.post(
   verifyToken,
   validate([
     check("iamUsername").notEmpty().trim().escape(),
-    check("roles").optional().isArray(),
-    check("roles.*").isMongoId().withMessage("Invalid role ID"),
     check("user").notEmpty(),
     check("user._id").isMongoId().withMessage("Invalid user ID"),
   ]),

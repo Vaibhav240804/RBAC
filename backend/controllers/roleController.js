@@ -11,9 +11,9 @@ exports.checkPermission = async (req, res, next) => {
     const userId = user._id;
     let creator;
     if (isRoot) {
-      creator = User.findById(userId);
+      creator = await User.findById(userId);
     } else {
-      creator = IAMUser.findById(userId);
+      creator = await IAMUser.findById(userId);
     }
     if (!creator) {
       return res.status(404).json({ message: "User not found" });
@@ -96,9 +96,6 @@ exports.createRole = async (req, res) => {
       "name description"
     );
 
-    dbUser.roles.push(role);  
-    await dbUser.save();
-
     res.status(201).json({ message: "Role created successfully", roles });
   } catch (err) {
     res
@@ -120,11 +117,8 @@ exports.assignRolesToUser = async (req, res) => {
     }
 
     const roles = await Role.find({ _id: { $in: roleIds } });
-    if (roles.length !== roleIds.length) {
-      return res.status(400).json({ message: "Invalid role IDs provided" });
-    }
 
-    const dbuser = await User.findByIdAndUpdate(
+    const dbuser = await IAMUser.findByIdAndUpdate(
       userId,
       { $addToSet: { roles: { $each: roleIds } } },
       { new: true }
@@ -174,9 +168,9 @@ exports.getRoleById = async (req, res) => {
     const userId = user._id;
     let creator;
     if (isRoot) {
-      creator = User.findById(userId);
+      creator = await User.findById(userId);
     } else {
-      creator = IAMUser.findById(userId);
+      creator = await IAMUser.findById(userId);
     }
     if (!creator) {
       return res.status(404).json({ message: "User not found" });
@@ -209,9 +203,9 @@ exports.deleteRole = async (req, res) => {
     const userId = user._id;
     let creator;
     if (isRoot) {
-      creator = User.findById(userId);
+      creator = await User.findById(userId);
     } else {
-      creator = IAMUser.findById(userId);
+      creator = await IAMUser.findById(userId);
     }
 
     if (!creator) {
@@ -228,6 +222,7 @@ exports.deleteRole = async (req, res) => {
     }
 
     await Role.findByIdAndDelete(roleId);
+    await IAMUser.updateMany({ roles: roleId }, { $pull: { roles: roleId } });
     res.status(200).json({ message: "Role deleted successfully" });
   } catch (err) {
     res

@@ -22,7 +22,7 @@ router.post(
     check("password").notEmpty().trim(),
     check("iamUsername").optional().isString().trim().escape(),
     check("accountId").optional().isString().trim().escape(),
-    check("isRoot").isBoolean(),
+    check("isRoot").toBoolean().isBoolean(),
   ]),
   signin
 );

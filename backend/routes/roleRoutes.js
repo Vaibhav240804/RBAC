@@ -4,6 +4,7 @@ const {
   getRoleById,
   getRolesByUserId,
   assignRolesToUser,
+  deleteRole,
 } = require("../controllers/roleController");
 const { verifyToken } = require("../middlewares/authMiddleware");
 const { validate } = require("../middlewares/validationMiddleware");
@@ -45,25 +46,25 @@ router.get(
     getRolesByUserId
 )
 router.get(
-    "/role/:roleId",
+    "/:roleId",
     verifyToken,
     validate([
         check("user").notEmpty(),
         check("user._id").isMongoId().withMessage("Invalid user ID"),
-        param("roleId").notEmpty().isMongoId().withMessage("Invalid role ID"),
+        param("roleId").isMongoId().withMessage("Invalid role ID"),
     ]),
     getRoleById
 )
 
 router.delete(
-  "deleterole/:roleId",
+  "/:roleId",
   verifyToken,
   validate([
     check("user").notEmpty(),
     check("user._id").isMongoId().withMessage("Invalid user ID"),
     param("roleId").notEmpty().isMongoId().withMessage("Invalid role ID"),
   ]),
-  getRoleById
+  deleteRole
 );
 
 module.exports = router;

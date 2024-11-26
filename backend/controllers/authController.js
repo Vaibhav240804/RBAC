@@ -123,6 +123,7 @@ class UserController {
           return res.status(404).json({ message: "User not found" });
         }
         const isValid = await user.comparePassword(password);
+        console.log("entered in root signin");
         if (!isValid) {
           return res.status(401).json({ message: "Invalid credentials" });
         }
@@ -141,7 +142,13 @@ class UserController {
           return res.status(400).json({ message: "Missing required fields" });
         }
         const iamUser = await IAMUser.findOne({ iamUsername, accountId });
-        if (!iamUser || !(await iamUser.comparePassword(password))) {
+        console.log("entered in IAM signin");
+        if(!iamUser) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        const isValid = await iamUser.comparePassword(password);
+        
+        if (!isValid) {
           return res.status(401).json({ message: "Invalid credentials" });
         }
 
