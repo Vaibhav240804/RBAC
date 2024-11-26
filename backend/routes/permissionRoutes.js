@@ -2,7 +2,6 @@ const express = require("express");
 const {
   createPermission,
   getAllPermissions,
-  deletePermission,
 } = require("../controllers/permissionController");
 const { verifyToken } = require("../middlewares/authMiddleware");
 const { validate } = require("../middlewares/validationMiddleware");
@@ -29,7 +28,5 @@ router.get("/", verifyToken,
   ]),
   getAllPermissions
 );
-
-router.delete("/:permissionId", verifyToken, deletePermission);
 
 module.exports = router;

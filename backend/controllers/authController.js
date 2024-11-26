@@ -46,7 +46,8 @@ class UserController {
   verifyOtp = async (req, res) => {
     try {
       const { email, otp } = req.body;
-      const user = await User.findOne({ email });
+      console.log(email, otp);
+      const user = await User.findOne({ email: email });
 
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -55,6 +56,8 @@ class UserController {
       if (user.otp !== otp) {
         return res.status(400).json({ message: "Invalid OTP" });
       }
+
+      console.log("OTP verified successfully");
 
       user.otp = "";
       await user.save();
@@ -70,7 +73,22 @@ class UserController {
         }
       );
 
-      res.status(200).json({ message: "OTP verified successfully", token });
+      const resUser = await user.populate("roles");
+
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 12 * 60 * 60 * 1000,
+        sameSite: "strict",
+      });
+
+      res.status(200).json({
+        message: "OTP verified successfully",
+        user: resUser,
+        roles: resUser.roles,
+        iamUsers: resUser.iamUsers,
+        isRoot: true,
+      });
     } catch (error) {
       console.log(error);
       res.status(500).json({ message: "Internal Server Error" });
@@ -110,6 +128,7 @@ class UserController {
   };
 
   signin = async (req, res) => {
+    console.log(req.body);
     const { email, password, isRoot } = req.body;
 
     if (!email || !password) {
@@ -129,12 +148,14 @@ class UserController {
         }
 
         const otp = this.generateOTP();
-        await this.sendEmail(user.email, otp);
+        console.log("generated otp", otp);
         user.otp = otp;
         await user.save();
+        await this.sendEmail(user.email, otp);
 
         res.json({
           message: "Login successful, OTP sent to email",
+          isRoot: true,
         });
       } else {
         const { iamUsername, accountId, password } = req.body;
@@ -143,15 +164,16 @@ class UserController {
         }
         const iamUser = await IAMUser.findOne({ iamUsername, accountId });
         console.log("entered in IAM signin");
-        if(!iamUser) {
+        if (!iamUser) {
           return res.status(404).json({ message: "User not found" });
         }
         const isValid = await iamUser.comparePassword(password);
-        
+
         if (!isValid) {
           return res.status(401).json({ message: "Invalid credentials" });
         }
 
+        const reSuser = await iamUser.populate("roles");
         const token = jwt.sign(
           {
             user: iamUser,
@@ -163,11 +185,31 @@ class UserController {
           }
         );
 
-        res.json({ message: "Login successful", token });
+        res.cookie("token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          maxAge: 12 * 60 * 60 * 1000,
+          sameSite: "strict",
+        });
+        res.json({
+          message: "Login successful",
+          user: reSuser,
+          roles: reSuser.roles,
+          isRoot: false,
+        });
       }
     } catch (err) {
       res.status(500).json({ message: "Server error", error: err.message });
     }
+  };
+
+  logout = (req, res) => {
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+    res.json({ message: "Logged out successfully" });
   };
 }
 

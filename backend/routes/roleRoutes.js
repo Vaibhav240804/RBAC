@@ -5,6 +5,8 @@ const {
   getRolesByUserId,
   assignRolesToUser,
   deleteRole,
+  removePermissionFromRole,
+  addPermissionToRole,
 } = require("../controllers/roleController");
 const { verifyToken } = require("../middlewares/authMiddleware");
 const { validate } = require("../middlewares/validationMiddleware");
@@ -17,12 +19,24 @@ router.post(
   verifyToken,
   validate([
     check("name").notEmpty().trim().escape(),
-    check("permissionIds").isArray().withMessage("Permissions must be an array"),
+    check("permissionIds")
+      .isArray()
+      .withMessage("Permissions must be an array"),
     check("permissionIds.*").isMongoId().withMessage("Invalid permission ID"),
     check("user").notEmpty(),
     check("user._id").isMongoId().withMessage("Invalid user ID"),
   ]),
   createRole
+);
+
+router.get(
+  "/",
+  verifyToken,
+  validate([
+    check("user").notEmpty(),
+    check("user._id").isMongoId().withMessage("Invalid user ID"),
+  ]),
+  getRolesByUserId
 );
 
 router.post(
@@ -33,28 +47,19 @@ router.post(
     check("roleIds.*").isMongoId().withMessage("Invalid role ID"),
     check("user").notEmpty(),
   ]),
-    assignRolesToUser
+  assignRolesToUser
 );
 
 router.get(
-    "/",
-    verifyToken,
-    validate([
-        check("user").notEmpty(),
-        check("user._id").isMongoId().withMessage("Invalid user ID"),
-    ]),
-    getRolesByUserId
-)
-router.get(
-    "/:roleId",
-    verifyToken,
-    validate([
-        check("user").notEmpty(),
-        check("user._id").isMongoId().withMessage("Invalid user ID"),
-        param("roleId").isMongoId().withMessage("Invalid role ID"),
-    ]),
-    getRoleById
-)
+  "/:roleId",
+  verifyToken,
+  validate([
+    check("user").notEmpty(),
+    check("user._id").isMongoId().withMessage("Invalid user ID"),
+    param("roleId").isMongoId().withMessage("Invalid role ID"),
+  ]),
+  getRoleById
+);
 
 router.delete(
   "/:roleId",
@@ -66,5 +71,29 @@ router.delete(
   ]),
   deleteRole
 );
+
+router.post(
+  "/remove-permission",
+  verifyToken,
+  validate([
+    check("roleId").isMongoId().withMessage("Invalid role ID"),
+    check("permissionId").isMongoId().withMessage("Invalid permission ID"),
+    check("user").notEmpty(),
+    check("isRoot").equals("true"),
+  ]),
+  removePermissionFromRole
+)
+
+router.post(
+  "/add-permission",
+  verifyToken,
+  validate([
+    check("roleId").isMongoId().withMessage("Invalid role ID"),
+    check("permissionId").isMongoId().withMessage("Invalid permission ID"),
+    check("user").notEmpty(),
+    check("isRoot").equals("true"),
+  ]),
+  addPermissionToRole
+)
 
 module.exports = router;

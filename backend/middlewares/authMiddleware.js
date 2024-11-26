@@ -3,7 +3,7 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 exports.verifyToken = (req, res, next) => {
-  const token = req.header("Authorization")?.replace("Bearer ", "");
+  const token = req.cookies.token;
   if (!token)
     return res
       .status(401)

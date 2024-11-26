@@ -4,48 +4,92 @@ const User = require("../models/User");
 const IAMUser = require("../models/IAMUser");
 const Resource = require("../models/Resource");
 
-exports.checkPermission = async (req, res, next) => {
+exports.getResources = async (req, res) => {
   try {
     const { user, isRoot } = req.body;
-    const { resourceName } = req.params;
     const userId = user._id;
     let creator;
     if (isRoot) {
       creator = await User.findById(userId);
+      if (!creator) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const resources = await Resource.find();
+      return res.status(200).json({ message: "Access granted", resources });
     } else {
       creator = await IAMUser.findById(userId);
-    }
-    if (!creator) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    const resource = await Resource.findOne({ name: resourceName }).populate(
-      "permissions"
-    );
-    if (!resource) {
-      return res.status(404).json({ message: "Resource not found" });
-    }
-    let roles = [];
-    let hasPermission = false;
-    if (isRoot) {
-      roles = await User.findById(userId).populate("roles");
-    } else {
-      roles = await IAMUser.findById(userId).populate("roles");
-    }
-
-    for (const role of roles) {
-      const rolePermissions = role.permissions;
-      for (const permission of rolePermissions) {
-        if (resource.permissions.includes(permission)) {
-          hasPermission = true;
-          break;
-        }
+      if (!creator) {
+        return res.status(404).json({ message: "User not found" });
       }
     }
+    const roles = await IAMUser.findById(userId).populate("roles");
+    const resources = await Resource.find().populate("permissions");
+    const allowedResources = resources.filter((resource) => {
+      let hasPermission = false;
+      for (const role of roles) {
+        const rolePermissions = role.permissions;
+        for (const permission of rolePermissions) {
+          if (resource.permissions.includes(permission)) {
+            hasPermission = true;
+            break;
+          }
+        }
+      }
+      return hasPermission;
+    });
+    res
+      .status(200)
+      .json({ message: "Access granted", resources: allowedResources });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
+  }
+};
 
-    if (!hasPermission) {
-      return res.status(403).json({ message: "Unauthorized access" });
+exports.checkPermission = async (req, res) => {
+  try {
+    const { user, isRoot } = req.body;
+    const userId = user._id;
+    let creator;
+    if (isRoot) {
+      creator = await User.findById(userId);
+      if (!creator) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const resources = await Resource.find();
+      return res.status(200).json({ message: "Access granted", resources });
+    } else {
+      const { resourceName } = req.params;
+      creator = await IAMUser.findById(userId);
+      if (!creator) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const resource = await Resource.findOne({ name: resourceName }).populate(
+        "permissions"
+      );
+      if (!resource) {
+        return res.status(404).json({ message: "Resource not found" });
+      }
+      let roles = await IAMUser.findById(userId).populate("roles");
+      let hasPermission = false;
+
+      for (const role of roles) {
+        const rolePermissions = role.permissions;
+        for (const permission of rolePermissions) {
+          if (resource.permissions.includes(permission)) {
+            hasPermission = true;
+            break;
+          }
+        }
+      }
+
+      if (!hasPermission) {
+        return res.status(403).json({ message: "Unauthorized access" });
+      }
+
+      res.status(200).json({ message: "Access granted", resource });
     }
-    return res.status(200).json({ message: "Access granted" });
   } catch (err) {
     res
       .status(500)
@@ -128,7 +172,7 @@ exports.assignRolesToUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.status(200).json({ message: "Roles assigned to user", user });
+    res.status(200).json({ message: "Roles assigned to user", iamUser: dbuser });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
@@ -223,7 +267,85 @@ exports.deleteRole = async (req, res) => {
 
     await Role.findByIdAndDelete(roleId);
     await IAMUser.updateMany({ roles: roleId }, { $pull: { roles: roleId } });
-    res.status(200).json({ message: "Role deleted successfully" });
+    res
+      .status(200)
+      .json({ message: "Role deleted successfully", roleId: roleId });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Internal server error", error: err.message });
+  }
+};
+
+exports.removePermissionFromRole = async (req, res) => {
+  try {
+    const { roleId, permissionId, user } = req.body;
+
+    const userId = user._id;
+    const creator = await User.findById(userId);
+
+    if (!creator) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const permission = await Permission.findById(permissionId);
+
+    if (!permission) {
+      return res.status(404).json({ message: "Permission not found" });
+    }
+
+    const role = await Role.findOne({
+      _id: roleId,
+      createdBy: creator,
+    });
+
+    if (!role) {
+      return res.status(404).json({ message: "Role not found" });
+    }
+
+    await Role.findByIdAndUpdate(roleId, {
+      $pull: { permissions: permissionId },
+    });
+
+    res.status(200).json({ message: "Permission removed from role" });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Internal server error", error: err.message });
+  }
+};
+
+exports.addPermissionToRole = async (req, res) => {
+  try {
+    const { roleId, permissionId, user } = req.body;
+
+    const userId = user._id;
+    const creator = await User.findById(userId);
+
+    if (!creator) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const permission = await Permission.findById(permissionId);
+
+    if (!permission) {
+      return res.status(404).json({ message: "Permission not found" });
+    }
+
+    const role = await Role.findOne({
+      _id: roleId,
+      createdBy: creator,
+    });
+
+    if (!role) {
+      return res.status(404).json({ message: "Role not found" });
+    }
+
+    await Role.findByIdAndUpdate(roleId, {
+      $addToSet: { permissions: permissionId },
+    });
+
+    res.status(200).json({ message: "Permission added to role" });
   } catch (err) {
     res
       .status(500)

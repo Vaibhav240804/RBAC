@@ -144,7 +144,7 @@ exports.deleteIAMUser = async (req, res) => {
       $pull: { iamUsers: iamUserId },
     });
 
-    res.status(200).json({ message: "IAM user deleted successfully" });
+    res.status(200).json({ message: "IAM user deleted successfully", iamUserId });
   } catch (err) {
     res
       .status(500)
