@@ -10,6 +10,7 @@ import { Checkbox, FormControlLabel } from "@mui/material";
 import { login, logup, reset, shareToken } from "../redux/authSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import crestLogo from "../assets/crest_hres_colored.svg";
 
 export default function SigninSignup() {
   const dispatch = useDispatch();
@@ -47,12 +48,12 @@ export default function SigninSignup() {
   const [showOtp, setShowOtp] = useState(false);
   const [btnName, setBtnName] = useState("Log In");
 
-  useEffect(() => {
-    dispatch(shareToken());
-    if (user) {
-      navigate("/dashboard");
-    }
-  }, [user, dispatch]);
+  // useEffect(() => {
+  //   dispatch(shareToken());
+  //   if (user) {
+  //     navigate("/dashboard");
+  //   }
+  // }, [user, dispatch]);
 
   useEffect(() => {
     if (isSuccess) {
@@ -156,6 +157,7 @@ export default function SigninSignup() {
         <Components.SignUpContainer signinIn={signIn}>
           <Components.Form>
             <Components.Title>Create Root Account</Components.Title>
+
             <TextField
               id="outlined-basic"
               label="Username"
@@ -329,7 +331,7 @@ export default function SigninSignup() {
             <Components.LeftOverlayPanel signinIn={signIn}>
               <Components.Title>Welcome Back!</Components.Title>
               <Components.Paragraph>
-                Create Once, Share Everywhere - Amplify Your Digital Presence.
+                Centralized Role based access control for your workforces
               </Components.Paragraph>
               <Components.GhostButton onClick={() => toggle(true)}>
                 Sign In
@@ -337,9 +339,9 @@ export default function SigninSignup() {
             </Components.LeftOverlayPanel>
 
             <Components.RightOverlayPanel signinIn={signIn}>
-              <Components.Title>Welcome to RailCart!</Components.Title>
+              <Components.Title>Welcome to CREST!</Components.Title>
               <Components.Paragraph>
-                One Click, Infinite Connections - Your Content, Everywhere!
+                Centralized Role based access control for your workforces
               </Components.Paragraph>
               <Components.GhostButton onClick={() => toggle(false)}>
                 Sign Up

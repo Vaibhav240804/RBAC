@@ -1,5 +1,16 @@
 import styled from "styled-components";
 
+export const Image = styled.div`
+  background-image: url("https://source.unsplash.com/random");
+  background-size: cover;
+  background-position: center;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+`;
+
 export const Container = styled.div`
   background-color: #fff;
   border-radius: 10px;
