@@ -1,11 +1,9 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import API from "../API";
+import { setRoles, setIamUsers, setCreatedRoles } from "./sharedSlice";
 
 const initialState = {
-  iamUsers: [],
-  roles: [],
   resources: [],
-  assignedRoles: [],
   openedRole: null,
   isError: false,
   isSuccess: false,
@@ -36,6 +34,7 @@ export const createRole = createAsyncThunk(
   async (roleData, thunkAPI) => {
     try {
       const res = await API.createRole(roleData);
+      thunkAPI.dispatch(setCreatedRoles(res.roles));
       return res;
     } catch (error) {
       const message =
@@ -54,6 +53,7 @@ export const assignRoles = createAsyncThunk(
   async (assignData, thunkAPI) => {
     try {
       const res = await API.assignRoles(assignData);
+      thunkAPI.dispatch(setIamUsers(res.iamUsers));
       return res;
     } catch (error) {
       const message =
@@ -72,6 +72,7 @@ export const getCurrUsersRoles = createAsyncThunk(
   async (_, thunkAPI) => {
     try {
       const res = await API.getCurrUsersRoles();
+      thunkAPI.dispatch(setCreatedRoles(res));
       return res;
     } catch (error) {
       const message =
@@ -108,6 +109,7 @@ export const deleteRolebyId = createAsyncThunk(
   async (roleId, thunkAPI) => {
     try {
       const res = await API.deleteRolebyId(roleId);
+      thunkAPI.dispatch(setCreatedRoles(res.roles));
       return res;
     } catch (error) {
       const message =
@@ -166,10 +168,7 @@ const roleSlice = createSlice({
       state.isSuccess = false;
       state.isLoading = false;
       state.message = "";
-      state.iamUsers = [];
-      state.roles = [];
       state.resources = [];
-      state.assignedRoles = [];
       state.openedRole = null;
     },
   },
@@ -191,10 +190,9 @@ const roleSlice = createSlice({
     builder.addCase(createRole.pending, (state) => {
       state.isLoading = true;
     });
-    builder.addCase(createRole.fulfilled, (state, action) => {
+    builder.addCase(createRole.fulfilled, (state) => {
       state.isLoading = false;
       state.isSuccess = true;
-      state.roles = action.payload.roles;
     });
     builder.addCase(createRole.rejected, (state, action) => {
       state.isLoading = false;
@@ -205,14 +203,9 @@ const roleSlice = createSlice({
     builder.addCase(assignRoles.pending, (state) => {
       state.isLoading = true;
     });
-    builder.addCase(assignRoles.fulfilled, (state, action) => {
+    builder.addCase(assignRoles.fulfilled, (state) => {
       state.isLoading = false;
       state.isSuccess = true;
-      state.iamUsers = state.iamUsers.map((iamUser) =>
-        iamUser._id === action.payload.iamUser._id
-          ? action.payload.iamUser
-          : iamUser
-      );
     });
     builder.addCase(assignRoles.rejected, (state, action) => {
       state.isLoading = false;
@@ -223,10 +216,9 @@ const roleSlice = createSlice({
     builder.addCase(getCurrUsersRoles.pending, (state) => {
       state.isLoading = true;
     });
-    builder.addCase(getCurrUsersRoles.fulfilled, (state, action) => {
+    builder.addCase(getCurrUsersRoles.fulfilled, (state) => {
       state.isLoading = false;
       state.isSuccess = true;
-      state.assignedRoles = action.payload.roles;
     });
     builder.addCase(getCurrUsersRoles.rejected, (state, action) => {
       state.isLoading = false;
@@ -251,18 +243,16 @@ const roleSlice = createSlice({
     builder.addCase(deleteRolebyId.pending, (state) => {
       state.isLoading = true;
     });
-    builder.addCase(deleteRolebyId.fulfilled, (state, action) => {
+    builder.addCase(deleteRolebyId.fulfilled, (state) => {
       state.isLoading = false;
       state.isSuccess = true;
-      state.roles = state.roles.filter(
-        (role) => role._id !== action.payload.roleId
-      );
     });
     builder.addCase(deleteRolebyId.rejected, (state, action) => {
       state.isLoading = false;
       state.isError = true;
       state.message = action.payload.message;
     });
+
     builder.addCase(removePermissionFromRole.pending, (state) => {
       state.isLoading = true;
     });

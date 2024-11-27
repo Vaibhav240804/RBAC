@@ -1,8 +1,8 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import API from "../API";
+import { setIamUsers, setCredentials } from "./sharedSlice";
 
 const initialState = {
-  iamUsers: [],
   openedUser: null,
   isError: false,
   isSuccess: false,
@@ -15,6 +15,11 @@ export const createIAMUser = createAsyncThunk(
   async (userData, thunkAPI) => {
     try {
       const res = await API.createUser(userData);
+      // const state = thunkAPI.getState();
+      // const iamUsers = state.shared.iamUsers;
+      // iamUsers.push(res.iamUser);
+      // thunkAPI.dispatch(setIamUsers(iamUsers));
+      thunkAPI.dispatch(setCredentials(res));
       return res;
     } catch (error) {
       const message =
@@ -33,6 +38,7 @@ export const getIAMUsers = createAsyncThunk(
   async (_, thunkAPI) => {
     try {
       const res = await API.getIAMUsers();
+      thunkAPI.dispatch(setIamUsers(res.iamUsers));
       return res;
     } catch (error) {
       const message =
@@ -51,6 +57,12 @@ export const deleteIAMUser = createAsyncThunk(
   async (iamUserId, thunkAPI) => {
     try {
       const res = await API.deleteUserbyId(iamUserId);
+      const state = thunkAPI.getState();
+      const iamUsers = state.shared.iamUsers;
+      const updatedIamUsers = iamUsers.filter(
+        (user) => user._id !== res.iamUser._id
+      );
+      thunkAPI.dispatch(setIamUsers(updatedIamUsers));
       return res;
     } catch (error) {
       const message =
@@ -87,6 +99,12 @@ export const toggleStatus = createAsyncThunk(
   async ({ iamUserId, data }, thunkAPI) => {
     try {
       const res = await API.toggleStatus(iamUserId, data);
+      const state = thunkAPI.getState();
+      const iamUsers = state.shared.iamUsers;
+      const updatedIamUsers = iamUsers.map((user) =>
+        user._id === iamUserId ? { ...user, status: data.status } : user
+      );
+      thunkAPI.dispatch(setIamUsers(updatedIamUsers));
       return res;
     } catch (error) {
       const message =
@@ -109,7 +127,6 @@ const iamSlice = createSlice({
       state.isSuccess = false;
       state.isLoading = false;
       state.message = "";
-      state.iamUsers = [];
       state.openedUser = null;
     },
   },
@@ -117,10 +134,9 @@ const iamSlice = createSlice({
     builder.addCase(createIAMUser.pending, (state) => {
       state.isLoading = true;
     });
-    builder.addCase(createIAMUser.fulfilled, (state, action) => {
+    builder.addCase(createIAMUser.fulfilled, (state) => {
       state.isLoading = false;
       state.isSuccess = true;
-      state.iamUsers.push(action.payload.iamUser);
     });
     builder.addCase(createIAMUser.rejected, (state, action) => {
       state.isLoading = false;
@@ -131,10 +147,9 @@ const iamSlice = createSlice({
     builder.addCase(getIAMUsers.pending, (state) => {
       state.isLoading = true;
     });
-    builder.addCase(getIAMUsers.fulfilled, (state, action) => {
+    builder.addCase(getIAMUsers.fulfilled, (state) => {
       state.isLoading = false;
       state.isSuccess = true;
-      state.iamUsers = action.payload.iamUsers;
     });
     builder.addCase(getIAMUsers.rejected, (state, action) => {
       state.isLoading = false;
@@ -145,12 +160,9 @@ const iamSlice = createSlice({
     builder.addCase(deleteIAMUser.pending, (state) => {
       state.isLoading = true;
     });
-    builder.addCase(deleteIAMUser.fulfilled, (state, action) => {
+    builder.addCase(deleteIAMUser.fulfilled, (state) => {
       state.isLoading = false;
       state.isSuccess = true;
-      state.iamUsers = state.iamUsers.filter(
-        (user) => user._id !== action.payload.iamUserId
-      );
     });
     builder.addCase(deleteIAMUser.rejected, (state, action) => {
       state.isLoading = false;
@@ -175,7 +187,7 @@ const iamSlice = createSlice({
     builder.addCase(toggleStatus.pending, (state) => {
       state.isLoading = true;
     });
-    builder.addCase(toggleStatus.fulfilled, (state, action) => {
+    builder.addCase(toggleStatus.fulfilled, (state) => {
       state.isLoading = false;
       state.isSuccess = true;
     });

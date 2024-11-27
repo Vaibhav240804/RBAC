@@ -1,10 +1,9 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import API from "../API";
+import { setIamUsers, setRoles, setCreatedRoles } from "./sharedSlice";
 
 const initialState = {
   user: null,
-  iamUsers: [],
-  createdRoles: [],
   isRoot: false,
   isError: false,
   isSuccess: false,
@@ -20,7 +19,43 @@ export const login = createAsyncThunk(
   async (userData, thunkAPI) => {
     try {
       const res = await API.login(userData);
-      return res;
+      console.log(res);
+      if (res.isRoot) {
+        return res;
+      } else {
+        const { roles } = res;
+        thunkAPI.dispatch(setRoles(roles));
+        return res;
+      }
+    } catch (error) {
+      const message =
+        (error.response &&
+          error.response.data &&
+          error.response.data.message) ||
+        error.toString() ||
+        error.message;
+      return thunkAPI.rejectWithValue({ message });
+    }
+  }
+);
+
+export const shareToken = createAsyncThunk(
+  "auth/shareToken",
+  async (_, thunkAPI) => {
+    try {
+      const res = await API.sendToken();
+      console.log(res);
+      if (res.isRoot) {
+        const { roles, createdRoles, iamUsers } = res;
+        thunkAPI.dispatch(setRoles(roles));
+        thunkAPI.dispatch(setCreatedRoles(createdRoles));
+        thunkAPI.dispatch(setIamUsers(iamUsers));
+        return res;
+      } else {
+        const { roles } = res;
+        thunkAPI.dispatch(setRoles(roles));
+        return res;
+      }
     } catch (error) {
       const message =
         (error.response &&
@@ -37,7 +72,8 @@ export const logup = createAsyncThunk(
   "auth/logup",
   async (userData, thunkAPI) => {
     try {
-      return await API.signup(userData);
+      const res = await API.signup(userData);
+      return res;
     } catch (error) {
       const message =
         (error.response &&
@@ -52,7 +88,8 @@ export const logup = createAsyncThunk(
 
 export const logout = createAsyncThunk("auth/logout", async (_, thunkAPI) => {
   try {
-    return await API.logout();
+    const res = await API.logout();
+    return res;
   } catch (error) {
     const message =
       (error.response && error.response.data && error.response.data.message) ||
@@ -67,9 +104,11 @@ export const verifyOtp = createAsyncThunk(
   async (otpData, thunkAPI) => {
     try {
       const response = await API.verifyOtp(otpData);
-      const { user } = response.data;
-      const { iamUsers, roles } = user;
-      return { user, iamUsers, roles };
+      const { user, iamUsers, roles, createdRoles } = response;
+      thunkAPI.dispatch(setIamUsers(iamUsers));
+      thunkAPI.dispatch(setCreatedRoles(createdRoles));
+      thunkAPI.dispatch(setRoles(roles));
+      return response;
     } catch (error) {
       const message =
         (error.response &&
@@ -91,8 +130,6 @@ const authSlice = createSlice({
       state.isSuccess = false;
       state.isLoading = false;
       state.message = "";
-      state.iamUsers = [];
-      state.createdRoles = [];
       state.username = "";
     },
   },
@@ -103,10 +140,29 @@ const authSlice = createSlice({
     builder.addCase(login.fulfilled, (state, action) => {
       state.isLoading = false;
       state.isSuccess = true;
-      state.user = action.payload;
       state.isRoot = action.payload.isRoot;
+      state.user = state.isRoot ? null : action.payload.user;
+      state.accountId = state.isRoot ? null : action.payload.accountId;
+      state.username = state.isRoot ? "" : action.payload.username;
     });
     builder.addCase(login.rejected, (state, action) => {
+      state.isLoading = false;
+      state.isError = true;
+      state.message = action.payload.message;
+    });
+
+    builder.addCase(shareToken.pending, (state) => {
+      state.isLoading = true;
+    });
+    builder.addCase(shareToken.fulfilled, (state, action) => {
+      state.isLoading = false;
+      state.isSuccess = true;
+      state.isRoot = action.payload.isRoot;
+      state.user = action.payload.user;
+      state.accountId = state.isRoot ? null : action.payload.accountId;
+      state.username = state.isRoot ? "" : action.payload.username;
+    });
+    builder.addCase(shareToken.rejected, (state, action) => {
       state.isLoading = false;
       state.isError = true;
       state.message = action.payload.message;
@@ -118,7 +174,7 @@ const authSlice = createSlice({
     builder.addCase(logup.fulfilled, (state, action) => {
       state.isLoading = false;
       state.isSuccess = true;
-      state.message = action.payload;
+      state.message = action.payload.message;
       state.isRoot = true;
     });
     builder.addCase(logup.rejected, (state, action) => {
@@ -150,8 +206,6 @@ const authSlice = createSlice({
       state.isLoading = false;
       state.isSuccess = true;
       state.user = action.payload.user;
-      state.iamUsers = action.payload.iamUsers;
-      state.createdRoles = action.payload.roles;
     });
     builder.addCase(verifyOtp.rejected, (state, action) => {
       state.isLoading = false;

@@ -81,7 +81,7 @@ exports.getIAMUsers = async (req, res) => {
     const iamUsers = await IAMUser.find({ createdBy: rootUserId }).populate(
       "roles"
     );
-    res.status(200).json(iamUsers);
+    res.status(200).json({ iamUsers: iamUsers });
   } catch (err) {
     res
       .status(500)

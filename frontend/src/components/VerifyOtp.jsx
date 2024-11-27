@@ -12,10 +12,14 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { MuiOtpInput } from "mui-one-time-password-input";
 import API from "../API";
+import { useDispatch, useSelector } from "react-redux";
+import { reset, verifyOtp } from "../redux/authSlice";
 
 export default function VerifyOtp({ open, handleClose, email, setLoginInfo }) {
   const [pin, setPin] = useState("");
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { isSuccess, isError, message } = useSelector((state) => state.auth);
 
   function timeout(delay) {
     return new Promise((res) => setTimeout(res, delay));
@@ -25,14 +29,14 @@ export default function VerifyOtp({ open, handleClose, email, setLoginInfo }) {
     e.preventDefault();
     console.log(pin);
     try {
-      const res = await API.verifyOtp({ email, otp: pin });
-
-      if (res.message === "OTP verified successfully") {
-        toast.success("OTP verified successfully", 2);
+      await dispatch(verifyOtp({ email, otp: pin }));
+      if (isSuccess) {
+        toast.success(message, 2);
         await timeout(1300);
-        navigate("/login");
-      } else {
-        toast.error("Invalid OTP", 2);
+        navigate("/dashboard");
+      }
+      if (isError) {
+        toast.error(message, 2);
       }
     } catch (error) {
       const errMsg =
@@ -46,6 +50,7 @@ export default function VerifyOtp({ open, handleClose, email, setLoginInfo }) {
         email: "",
         password: "",
       });
+      dispatch(reset());
     }
   };
 

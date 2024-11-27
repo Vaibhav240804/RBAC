@@ -100,12 +100,14 @@ exports.checkPermission = async (req, res) => {
 exports.createRole = async (req, res) => {
   try {
     const { name, permissionIds, user } = req.body;
-
+    
     if (!name || !permissionIds || !user) {
       return res
-        .status(400)
-        .json({ message: "Please provide all required fields" });
+      .status(400)
+      .json({ message: "Please provide all required fields" });
     }
+    console.log("found data for role creation");
+
     const creator = user._id;
 
     const dbUser = await User.findById(creator);
@@ -123,9 +125,6 @@ exports.createRole = async (req, res) => {
     const permissions = await Permission.find({
       _id: { $in: permissionIds },
     });
-    if (permissions.length !== permissionIds.length) {
-      return res.status(400).json({ message: "Some permissions are invalid" });
-    }
 
     const role = new Role({
       name,
@@ -139,6 +138,8 @@ exports.createRole = async (req, res) => {
       "permissions",
       "name description"
     );
+
+    console.log("role created");
 
     res.status(201).json({ message: "Role created successfully", roles });
   } catch (err) {
@@ -195,6 +196,8 @@ exports.getRolesByUserId = async (req, res) => {
       "permissions",
       "name description"
     );
+
+    console.log(roles);
 
     res.status(200).json(roles);
   } catch (err) {
@@ -267,9 +270,13 @@ exports.deleteRole = async (req, res) => {
 
     await Role.findByIdAndDelete(roleId);
     await IAMUser.updateMany({ roles: roleId }, { $pull: { roles: roleId } });
+    const roles = await Role.find({ createdBy: creator }).populate(
+      "permissions",
+      "name description"
+    );
     res
       .status(200)
-      .json({ message: "Role deleted successfully", roleId: roleId });
+      .json({ message: "Role deleted successfully", roles: roles });
   } catch (err) {
     res
       .status(500)

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import * as Components from "../components/login";
 import TextField from "@mui/material/TextField";
 import IconButton from "@mui/material/IconButton";
@@ -6,10 +6,18 @@ import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { toast } from "react-hot-toast";
 import VerifyOtp from "../components/VerifyOtp";
-import { Checkbox, FormControl, FormControlLabel } from "@mui/material";
-import API from "../API";
+import { Checkbox, FormControlLabel } from "@mui/material";
+import { login, logup, reset, shareToken } from "../redux/authSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 export default function SigninSignup() {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { isError, isSuccess, message, user } = useSelector(
+    (state) => state.auth
+  );
+
   const [loginInfo, setLoginInfo] = useState({
     email: "",
     password: "",
@@ -39,6 +47,25 @@ export default function SigninSignup() {
   const [showOtp, setShowOtp] = useState(false);
   const [btnName, setBtnName] = useState("Log In");
 
+  useEffect(() => {
+    dispatch(shareToken());
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, dispatch]);
+
+  useEffect(() => {
+    if (isSuccess) {
+      toast.success(message);
+      if (isRoot) {
+        setShowOtp(true);
+      }
+    }
+    if (isError) {
+      toast.error(message);
+    }
+  }, [isSuccess, isError]);
+
   const handleSignup = async (e) => {
     e.preventDefault();
     console.log(signupInfo);
@@ -53,9 +80,13 @@ export default function SigninSignup() {
       return;
     }
     try {
-      const res = await API.signup(signupInfo);
-      toast.success(res.message);
-      toggle(true);
+      dispatch(logup(signupInfo));
+      if (isSuccess) {
+        toast.success(message);
+        toggle(true);
+      } else if (isError) {
+        toast.error(message);
+      }
     } catch (error) {
       console.log(error);
       const errorMessage =
@@ -63,6 +94,8 @@ export default function SigninSignup() {
         error.message ||
         "An unknown error occurred";
       toast.error(errorMessage, 2);
+    } finally {
+      dispatch(reset());
     }
   };
 
@@ -90,10 +123,15 @@ export default function SigninSignup() {
       }
     }
     try {
-      const res = await API.login(loginInfo);
-      toast.success(res.message);
-      if (isRoot) {
-        setShowOtp(true);
+      dispatch(login(loginInfo));
+      if (isSuccess) {
+        toast.success(message);
+        if (isRoot) {
+          console.log("changed to otp");
+          setShowOtp(true);
+        }
+      } else if (isError) {
+        toast.error(message);
       }
     } catch (error) {
       console.log(error);
@@ -103,6 +141,7 @@ export default function SigninSignup() {
         "An unknown error occurred";
       toast.error(errorMessage, 2);
     }
+    setBtnName("Log In");
   };
 
   return (

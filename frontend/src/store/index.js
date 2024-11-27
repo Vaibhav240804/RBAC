@@ -1,14 +1,18 @@
 import { configureStore } from "@reduxjs/toolkit";
-import authReducer from "../puck/auth/authSlice";
-import dashReducer from "../puck/dash/dashSlice";
-import expenseReducer from "../puck/Expenses/ExpenseSlice";
-import reportReducer from "../puck/report/reportSlice";
+import authReducer from "../redux/authSlice";
+import roleReducer from "../redux/roleSlice";
+import sharedReducer from "../redux/sharedSlice";
+import iamReducer from "../redux/iamSlice";
+import permReducer from "../redux/permSlice";
+import resReducer from "../redux/resourceSlice";
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
-    dash: dashReducer,
-    expenses: expenseReducer,
-    report: reportReducer,
+    role: roleReducer,
+    shared: sharedReducer,
+    secUser: iamReducer,
+    perm: permReducer,
+    resrc: resReducer,
   },
 });

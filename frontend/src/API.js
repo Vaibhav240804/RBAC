@@ -18,7 +18,7 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       toast.error("Session Expired! Please Login Again.", 2);
       await timeout(2000);
-      window.location.href = "/login";
+      window.location.href = "/signin";
     }
     return Promise.reject(error);
   }
@@ -54,6 +54,15 @@ class API {
         "An unknown error occurred";
       toast.error(errorMessage, 2);
       throw error;
+    }
+  }
+
+  static async sendToken(){
+    try {
+      const res = await api.get("/api/auth/cookie-validate");
+      return res.data;
+    } catch (error) {
+      
     }
   }
 

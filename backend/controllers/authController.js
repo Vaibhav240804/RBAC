@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
 const crypto = require("crypto");
 const IAMUser = require("../models/IAMUser");
+const Role = require("../models/Role");
 dotenv.config();
 
 class UserController {
@@ -43,6 +44,60 @@ class UserController {
     }
   };
 
+  validateToken = async (req, res) => {
+    try {
+      const { user, isRoot } = req.body;
+      let dbUser;
+      if (isRoot) {
+        dbUser = await User.findById(user._id);
+      } else {
+        dbUser = await IAMUser.findById(user._id);
+      }
+      if (!dbUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const token = jwt.sign(
+        {
+          user: user,
+          isRoot: isRoot,
+        },
+        process.env.JWT_SECRET,
+        {
+          expiresIn: "12h",
+        }
+      );
+
+      let createdRoles;
+      if (isRoot) {
+        createdRoles = await Role.find({ creator: dbUser._id });
+      }
+      const roles = await dbUser.populate("roles");
+
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 12 * 60 * 60 * 1000,
+        sameSite: "strict",
+      });
+      let iamUsers = [];
+      if (isRoot) {
+        iamUsers = dbUser.iamUsers;
+      }
+
+      res.status(200).json({
+        message: "Token validated successfully",
+        user: user,
+        isRoot: true,
+        roles: roles,
+        iamUsers: iamUsers,
+        createdRoles: createdRoles,
+      });
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  };
+
   verifyOtp = async (req, res) => {
     try {
       const { email, otp } = req.body;
@@ -75,6 +130,8 @@ class UserController {
 
       const resUser = await user.populate("roles");
 
+      const createdRoles = await Role.find({ creator: user._id });
+
       res.cookie("token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -87,6 +144,7 @@ class UserController {
         user: resUser,
         roles: resUser.roles,
         iamUsers: resUser.iamUsers,
+        createdRoles: createdRoles,
         isRoot: true,
       });
     } catch (error) {
@@ -195,6 +253,8 @@ class UserController {
           message: "Login successful",
           user: reSuser,
           roles: reSuser.roles,
+          username: iamUsername,
+          accountId: accountId,
           isRoot: false,
         });
       }

@@ -7,6 +7,7 @@ const iamRoutes = require("./routes/iamUserRoutes");
 const permissionRoutes = require("./routes/permissionRoutes");
 const resourceRoutes = require("./routes/resourceRoutes");
 const connectDB = require("./config/db");
+const cookieParser = require("cookie-parser");
 
 dotenv.config();
 const app = express();
@@ -24,6 +25,7 @@ app.use(
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(cookieParser());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/roles", roleRoutes);

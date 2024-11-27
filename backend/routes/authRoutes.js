@@ -4,12 +4,20 @@ const {
   signup,
   verifyOtp,
   logout,
+  validateToken,
 } = require("../controllers/authController");
 const { validate } = require("../middlewares/validationMiddleware");
 const { check } = require("express-validator");
 const { verifyToken } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
+
+router.get(
+  "/cookie-validate",
+  verifyToken,
+  validate([check("user").notEmpty()]),
+  validateToken
+);
 
 router.post(
   "/signup",
@@ -28,7 +36,7 @@ router.post(
     check("password").notEmpty(),
     check("iamUsername").optional().isString().trim().escape(),
     check("accountId").optional().isString().trim().escape(),
-    check("isRoot").notEmpty()
+    check("isRoot").notEmpty(),
   ]),
   signin
 );
